@@ -22,7 +22,7 @@ public class DeviceRegistry implements IPlugin {
 	public Object execute(String arg0, Object... arg1) {
 		// TODO Auto-generated method stub
 		if (arg0.equals("add")) {
-			devices.put(arg1[0], arg1[1]);
+			devices.put(String.valueOf(arg1[0]), String.valueOf(arg1[0]));
 			System.out.println("Device " + arg1[0] + " added!\n");
 		} else if (arg0.equals("remove")) {
 			devices.remove(arg1[0]);
