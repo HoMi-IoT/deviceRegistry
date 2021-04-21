@@ -1,6 +1,10 @@
-import org.homi.plugin.api.IPluginFactory;
+import org.homi.plugin.api.IPlugin;
 
 module org.homi.deviceRegistry {
 	requires org.homi.plugin.api;
-	provides IPluginFactory with deviceRegistry.DeviceRegistryFactory;
+	requires org.homi.plugin.specification;
+	requires org.homi.core;
+	requires java.sql;
+	requires deviceRegistrySpec;
+	provides org.homi.plugin.api.IPlugin with deviceRegistry.DeviceRegistry;
 }
