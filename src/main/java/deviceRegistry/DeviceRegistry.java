@@ -130,7 +130,7 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 		try {
 			Action<FieldList> a1 = Action.getAction(aq);
 			a1.set("0", "DeviceRegistry");
-			a1.set("1", QueryBuilder.eq("name", (String)objects[0]));
+			a1.set("1", null);
 			List<Device> d = (List<Device>)a1.run().accept(new DeviceRegistryStorageVisitor());
 			return d.toArray(new Device[d.size()]);
 		} catch (Exception e) {
