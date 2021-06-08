@@ -8,6 +8,7 @@ import org.homi.plugin.api.commander.CommanderBuilder;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -84,10 +85,10 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 		 * groups (list)
 		 */
 		Record newRecord = new Record();
-		newRecord.addField("name", new Value(newDevice.getName()));
+		newRecord.addField("name", new Value<>(newDevice.getName()));
 		newRecord.addField("addresses", Record.of(newDevice.getAddresses()));
 		newRecord.addField("attributes", Record.of(newDevice.getAttributes()));
-		newRecord.addField("groups", new Value((Serializable) newDevice.getGroups()));
+		newRecord.addField("groups", new Value<>((Serializable) newDevice.getGroups()));
 
 		ActionQuery aq = new ActionQuery();
 		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("STORE");
@@ -171,10 +172,10 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 			a1.set("0", "DeviceRegistry");
 			a1.set("1", QueryBuilder.eq("name", d.getName()));
 			Record newRecord = new Record();
-			newRecord.addField("name", new Value(d.getName()));
+			newRecord.addField("name", new Value<String>(d.getName()));
 			newRecord.addField("addresses", Record.of(d.getAddresses()));
 			newRecord.addField("attributes", Record.of(d.getAttributes()));
-			newRecord.addField("groups", new Value((Serializable) d.getGroups()));
+			newRecord.addField("groups", new Value<>((Serializable)d.getGroups()));
 			a1.set("2", newRecord);
 			int res = a1.run();
 			return res != 0;
