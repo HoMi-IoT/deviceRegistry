@@ -1,18 +1,25 @@
 package deviceRegistry;
 
-import deviceRegistrySpec.deviceRegistrySpec;
+import deviceRegistrySpec.DeviceRegistrySpec;
 import org.homi.plugin.api.*;
-import org.homi.plugin.specification.ISpecification;
-//import deviceRegistry.DeviceRegistryWorker;
-import java.util.Hashtable;
-import java.util.Map;
+import org.homi.plugin.api.basicplugin.AbstractBasicPlugin;
+import org.homi.plugin.api.commander.Commander;
+import org.homi.plugin.api.commander.CommanderBuilder;
+
+import java.io.Serializable;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.Arrays;
-import deviceRegistry.Task;
-import deviceRegistry.DeviceRegistryWorker;
-import java.lang.Thread;
-import java.sql.SQLException;
+
+import org.homi.plugin.api.exceptions.InternalPluginException;
+import org.homi.plugins.ar.specification.actions.Action;
+import org.homi.plugins.ar.specification.actions.ActionQuery;
+
+import deviceRegistrySpec.Device;
+import org.homi.plugins.dbs.nosqlspec.query.QueryBuilder;
+import org.homi.plugins.dbs.nosqlspec.record.FieldList;
+import org.homi.plugins.dbs.nosqlspec.record.Record;
+import org.homi.plugins.dbs.nosqlspec.record.Value;
 /*
  * 
  * Start with key value 
@@ -21,16 +28,18 @@ import java.sql.SQLException;
  */
 
 @PluginID(id = "DeviceRegistry")
-public class DeviceRegistry extends AbstractPlugin{
+public class DeviceRegistry extends AbstractBasicPlugin {
 	//map device name and device address
 	
 	//utilize singleton
 	//private DeviceRegistyrInstance dri = deviceregistry.getinstance;
 	//beta implementation using in memory store
-	ConcurrentMap<String, String> devices = new ConcurrentHashMap<>(); //id, name
+	ConcurrentMap<String, Device> devices = new ConcurrentHashMap<>(); //id, name
 	ConcurrentMap<String, String> groups = new ConcurrentHashMap<>();
 	ConcurrentMap<String, String> states = new ConcurrentHashMap<>();
-	private RegistryDBConn instance = new RegistryDBConn();
+	//private RegistryDBConn instance = new RegistryDBConn();
+
+
 	
 	
 	//public static volatile LinkedBlockingQueue<Task> queue = new LinkedBlockingQueue<Task>();
@@ -38,147 +47,177 @@ public class DeviceRegistry extends AbstractPlugin{
 	@Override
 	public void setup() {
 		
-		CommanderBuilder<deviceRegistrySpec> cb = new CommanderBuilder<>(deviceRegistrySpec.class) ;
-		
-		
-		
-		Commander<deviceRegistrySpec> c = cb.onCommandEquals(deviceRegistrySpec.CREATEDEVICE, this::createDevice).
-		onCommandEquals(deviceRegistrySpec.GETDEVICES, this::getDevices).
-		onCommandEquals(deviceRegistrySpec.DELETEDEVICES, this::deleteDevices).
-		onCommandEquals(deviceRegistrySpec.WRITESTATE, this::writeState).
-		onCommandEquals(deviceRegistrySpec.DELETESTATE, this::deleteState).
-		onCommandEquals(deviceRegistrySpec.GETSTATE, this::getState).
-		onCommandEquals(deviceRegistrySpec.CREATEGROUP, this::createGroup).
-		onCommandEquals(deviceRegistrySpec.SETGROUP, this::setGroup).
-		onCommandEquals(deviceRegistrySpec.DELETEGROUP, this::deleteGroup).
-		onCommandEquals(deviceRegistrySpec.DELETEFROMGROUP, this::deleteFromGroup).
-		onCommandEquals(deviceRegistrySpec.UPDATESTATE, this::updateState).
+		CommanderBuilder<DeviceRegistrySpec> cb = new CommanderBuilder<>(DeviceRegistrySpec.class) ;
+		Commander<DeviceRegistrySpec> c = cb.onCommandEquals(DeviceRegistrySpec.CREATEDEVICE, this::createDevice).
+		onCommandEquals(DeviceRegistrySpec.GETDEVICE, this::getDevice).
+		onCommandEquals(DeviceRegistrySpec.GETDEVICES, this::getDevices).
+		onCommandEquals(DeviceRegistrySpec.DELETEDEVICE, this::deleteDevice).
+		onCommandEquals(DeviceRegistrySpec.SETATTRIBUTE, this::setAttribute).
+		onCommandEquals(DeviceRegistrySpec.DELETEATTRIBUTE, this::deleteAttribute).
+		onCommandEquals(DeviceRegistrySpec.ADDTOGROUP, this::addToGroup).
+		onCommandEquals(DeviceRegistrySpec.DELETEGROUP, this::deleteGroup).
+		onCommandEquals(DeviceRegistrySpec.DELETEFROMGROUP, this::deleteFromGroup).
 		build();
-		addCommander(deviceRegistrySpec.class, c);
-		
+		addCommander(DeviceRegistrySpec.class, c);
+
+		Action.setPluginProvider(this.getPluginProvider());
 		
 		/*
 		addWorker(null/spec, runnable (lambda))
 		
 		*/
 	}
-	
-	private String createDevice(Object ...objects) { //actual will be string name, string 
-		
-		return instance.createDevice((int) objects[1], objects[2].toString(), objects[3].toString());
+
+	@Override
+	public void teardown() {
+		System.out.println("hola");
 	}
-	
-	private String[] getDevices(Object ...objects) {
-		String[] devices;
+
+	private Boolean createDevice(Object ...objects) throws InternalPluginException { //actual will be string name, string
+
+		Device newDevice = (Device) objects[0];
+		/**
+		 * _id:
+		 * name:
+		 * addresses (record):
+		 * attributes (record):
+		 * groups (list)
+		 */
+		Record newRecord = new Record();
+		newRecord.addField("name", new Value(newDevice.getName()));
+		newRecord.addField("addresses", Record.of(newDevice.getAddresses()));
+		newRecord.addField("attributes", Record.of(newDevice.getAttributes()));
+		newRecord.addField("groups", new Value((Serializable) newDevice.getGroups()));
+
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("STORE");
 		try {
-			devices = instance.getDevices();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
+			Action<Integer> a1 = Action.getAction(aq);
+			a1.set("0", "DeviceRegistry");
+			a1.set("1", newRecord);
+			int res = a1.run();
+			return (res == 0 ? false : true);
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
 		}
-		return devices;
 	}
-	
-	private String deleteDevices(Object ...objects) { //string[] deviceIDs
-		String output;
-		
+
+	private Device getDevice(Object... objects) throws InternalPluginException {
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("QUERY");
+
 		try {
-			output = instance.deleteDevices((int[]) objects[1]);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
+			Action<FieldList> a1 = Action.getAction(aq);
+			a1.set("0", QueryBuilder.eq("name", (String)objects[0]));
+			List<Device> d = (List<Device>)a1.run().accept(new DeviceRegistryStorageVisitor());
+			if (d.size() > 0) {
+				return d.get(0);
+			} else {
+				return null;
+			}
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
 		}
-		return output;
 	}
-	
-	private String writeState(Object ...objects) { // String id, String key, String value
-		String output;
+
+	private Device[] getDevices(Object ...objects) throws InternalPluginException {
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("QUERY");
+
 		try {
-			output = instance.writeState((int) objects[1], objects[2].toString(), objects[3].toString());
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
+			Action<FieldList> a1 = Action.getAction(aq);
+			a1.set("0", QueryBuilder.eq("name", (String)objects[0]));
+			List<Device> d = (List<Device>)a1.run().accept(new DeviceRegistryStorageVisitor());
+			return d.toArray(new Device[d.size()]);
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
 		}
-		return output;
 	}
-	
-	private String updateState(Object ...objects) { // String id, String key, String value
-		String output;
+
+	private Boolean deleteDevice(Object ...objects) throws InternalPluginException { //string[] deviceIDs
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("DELETE");
+
 		try {
-			output = instance.updateState((int) objects[1], objects[2].toString(), objects[3].toString());
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
+			Action<Integer> a1 = Action.getAction(aq);
+			a1.set("0", QueryBuilder.eq("name", (String) objects[0]));
+			int res = a1.run();
+			return res != 0;
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
 		}
-		return output;
 	}
+
 	
-	private String deleteState(Object ...objects) { //String deviceID, String key
-		String output;
+	private Boolean setAttribute(Object ...objects) throws InternalPluginException { // String id, String key, String value
+
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("UPDATE");
+
+		Device d = this.getDevice(objects[0]);
+		d.setAttribute((String) objects[1], (Serializable) objects[2]);
+
+		return updateHelper(aq, d);
+	}
+
+	private boolean updateHelper(ActionQuery aq, Device d) throws InternalPluginException {
 		try {
-			output = instance.deleteState((int) objects[1], objects[2].toString());
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
+			Action<Integer> a1 = Action.getAction(aq);
+			a1.set("0", "DeviceRegistry");
+			a1.set("1", QueryBuilder.eq("name", d.getName()));
+			Record newRecord = new Record();
+			newRecord.addField("name", new Value(d.getName()));
+			newRecord.addField("addresses", Record.of(d.getAddresses()));
+			newRecord.addField("attributes", Record.of(d.getAttributes()));
+			newRecord.addField("groups", new Value((Serializable) d.getGroups()));
+			a1.set("2", newRecord);
+			int res = a1.run();
+			return res != 0;
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
 		}
-		return output;
+	}
+
+	private boolean deleteAttribute(Object ...objects) throws InternalPluginException { //String deviceID, String key
+
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("UPDATE");
+
+		Device d = this.getDevice(objects[0]);
+		d.deleteAttribute((String) objects[1]);
+
+		return updateHelper(aq, d);
 	}
 	
-	private String getState(Object ...objects) { //String deviceID, String key
-		return null;
+	private boolean addToGroup(Object ...objects) throws InternalPluginException { //String deviceID, String key
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("UPDATE");
+
+		Device d = this.getDevice(objects[0]);
+		d.addGroup((String) objects[1]);
+
+		return updateHelper(aq, d);
 	}
 	
-	private String createGroup(Object ...objects) { //String deviceID, String key
-		String output;
-		try {
-			output = instance.createGroup((int) objects[1], objects[2].toString());
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
-		}
-		return output;
+	private boolean deleteGroup(Object ...objects) throws InternalPluginException { //String groupID
+//		ActionQuery aq = new ActionQuery();
+//		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("UPDATE");
+//
+//		Device d = this.getDevice(objects[0]);
+//		d.deleteGroup((String) objects[1]);
+//
+//		return updateHelper(aq, d);
+		return true; // implement later
 	}
 	
-	private String setGroup(Object ...objects) { //String deviceID, String groupID
-		String output;
-		try {
-			output = instance.setGroup((int) objects[1], (int) objects[2]);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
-		}
-		return output;
-	}
-	
-	private String deleteGroup(Object ...objects) { //String groupID
-		String output;
-		try {
-			output = instance.deleteGroup((int) objects[1]);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
-		}
-		return output;
-	}
-	
-	private String deleteFromGroup(Object ...objects) { //String deviceID, groupID
-		String output;
-		try {
-			output = instance.deleteFromGroup((int) objects[1], (int) objects[2]);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			output = e.getSQLState();
-		}
-		return output;
+	private boolean deleteFromGroup(Object ...objects) throws InternalPluginException { //String deviceID, groupID
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("UPDATE");
+
+		Device d = this.getDevice(objects[0]);
+		d.deleteGroup((String) objects[1]);
+
+		return updateHelper(aq, d);
 	}
 
 }
