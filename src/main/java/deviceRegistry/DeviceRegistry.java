@@ -7,10 +7,12 @@ import org.homi.plugin.api.commander.Commander;
 import org.homi.plugin.api.commander.CommanderBuilder;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 import org.homi.plugin.api.exceptions.InternalPluginException;
 import org.homi.plugins.ar.specification.actions.Action;
@@ -52,12 +54,14 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 		Commander<DeviceRegistrySpec> c = cb.onCommandEquals(DeviceRegistrySpec.CREATEDEVICE, this::createDevice).
 		onCommandEquals(DeviceRegistrySpec.GETDEVICE, this::getDevice).
 		onCommandEquals(DeviceRegistrySpec.GETDEVICES, this::getDevices).
+		onCommandEquals(DeviceRegistrySpec.GETALLDEVICES, this::getAllDevices).
 		onCommandEquals(DeviceRegistrySpec.DELETEDEVICE, this::deleteDevice).
 		onCommandEquals(DeviceRegistrySpec.SETATTRIBUTE, this::setAttribute).
 		onCommandEquals(DeviceRegistrySpec.DELETEATTRIBUTE, this::deleteAttribute).
 		onCommandEquals(DeviceRegistrySpec.ADDTOGROUP, this::addToGroup).
 		onCommandEquals(DeviceRegistrySpec.DELETEGROUP, this::deleteGroup).
 		onCommandEquals(DeviceRegistrySpec.DELETEFROMGROUP, this::deleteFromGroup).
+		onCommandEquals(DeviceRegistrySpec.GETGROUP, this::getGroup).
 		build();
 		addCommander(DeviceRegistrySpec.class, c);
 
@@ -123,7 +127,23 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 		}
 	}
 
+	//waiting for nick to add nosql stuff to it
 	private Device[] getDevices(Object ...objects) throws InternalPluginException {
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("QUERY");
+
+		try {
+			Action<FieldList> a1 = Action.getAction(aq);
+			a1.set("0", "DeviceRegistry");
+			a1.set("1", QueryBuilder.in("name", (String[]) objects[0]));
+			List<Device> d = (List<Device>)a1.run().accept(new DeviceRegistryStorageVisitor());
+			return d.toArray(new Device[d.size()]);
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
+		}
+	}
+
+	private Device[] getAllDevices(Object ...objects) throws InternalPluginException {
 		ActionQuery aq = new ActionQuery();
 		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("QUERY");
 
@@ -224,6 +244,14 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 		d.deleteGroup((String) objects[1]);
 
 		return updateHelper(aq, d);
+	}
+
+	//waiting for nick to add nosql
+	private Device[] getGroup(Object ...objects) throws InternalPluginException { //String deviceID, groupID
+		Device[] devices = getAllDevices();
+
+		return Arrays.stream(devices).filter((d)->{return d.getGroups().contains(objects[0]);}).collect(Collectors.toList()).toArray(new Device[0]);
+
 	}
 
 }
