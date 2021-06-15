@@ -64,7 +64,6 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 		onCommandEquals(DeviceRegistrySpec.GETGROUP, this::getGroup).
 		build();
 		addCommander(DeviceRegistrySpec.class, c);
-
 		Action.setPluginProvider(this.getPluginProvider());
 		
 		/*
@@ -176,14 +175,18 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 
 	
 	private Boolean setAttribute(Object ...objects) throws InternalPluginException { // String id, String key, String value
+		try {
+			ActionQuery aq = new ActionQuery();
+			aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("UPDATE");
 
-		ActionQuery aq = new ActionQuery();
-		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("UPDATE");
+			Device d = this.getDevice(objects[0]);
+			d.setAttribute((String) objects[1], (Serializable) objects[2]);
 
-		Device d = this.getDevice(objects[0]);
-		d.setAttribute((String) objects[1], (Serializable) objects[2]);
+			return updateHelper(aq, d);
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
+		}
 
-		return updateHelper(aq, d);
 	}
 
 	private boolean updateHelper(ActionQuery aq, Device d) throws InternalPluginException {
@@ -205,7 +208,11 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 	}
 
 	private boolean deleteAttribute(Object ...objects) throws InternalPluginException { //String deviceID, String key
+		try {
 
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
+		}
 		ActionQuery aq = new ActionQuery();
 		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("UPDATE");
 
@@ -216,42 +223,66 @@ public class DeviceRegistry extends AbstractBasicPlugin {
 	}
 	
 	private boolean addToGroup(Object ...objects) throws InternalPluginException { //String deviceID, String key
-		ActionQuery aq = new ActionQuery();
-		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("UPDATE");
+		try {
+			ActionQuery aq = new ActionQuery();
+			aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("UPDATE");
 
-		Device d = this.getDevice(objects[0]);
-		d.addGroup((String) objects[1]);
+			Device d = this.getDevice(objects[0]);
+			d.addGroup((String) objects[1]);
 
-		return updateHelper(aq, d);
+			return updateHelper(aq, d);
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
+		}
+
 	}
 	
-	private boolean deleteGroup(Object ...objects) throws InternalPluginException { //String groupID
-//		ActionQuery aq = new ActionQuery();
-//		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("UPDATE");
-//
-//		Device d = this.getDevice(objects[0]);
-//		d.deleteGroup((String) objects[1]);
-//
-//		return updateHelper(aq, d);
-		return true; // implement later
+	private Void deleteGroup(Object ...objects) throws InternalPluginException { //String groupID
+		try {
+			ActionQuery aq = new ActionQuery();
+			aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NOSQL").command("UPDATE");
+
+			Device[] d = this.getAllDevices(objects[0]);
+			for (var device : d) {
+				device.deleteGroup((String) objects[0]);
+				updateHelper(aq, device);
+			}
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
+		}
+		return null;
 	}
 	
 	private boolean deleteFromGroup(Object ...objects) throws InternalPluginException { //String deviceID, groupID
-		ActionQuery aq = new ActionQuery();
-		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("UPDATE");
+		try {
+			ActionQuery aq = new ActionQuery();
+			aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("UPDATE");
 
-		Device d = this.getDevice(objects[0]);
-		d.deleteGroup((String) objects[1]);
+			Device d = this.getDevice(objects[0]);
+			d.deleteGroup((String) objects[1]);
 
-		return updateHelper(aq, d);
+			return updateHelper(aq, d);
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
+		}
+
 	}
 
 	//waiting for nick to add nosql
 	private Device[] getGroup(Object ...objects) throws InternalPluginException { //String deviceID, groupID
-		Device[] devices = getAllDevices();
+		ActionQuery aq = new ActionQuery();
+		aq.type(ActionQuery.TYPE.SPECIFICATION).pluginID("NoSQLPlugin").command("QUERY");
 
-		return Arrays.stream(devices).filter((d)->{return d.getGroups().contains(objects[0]);}).collect(Collectors.toList()).toArray(new Device[0]);
+		try {
+			Action<FieldList> a1 = Action.getAction(aq);
 
+			a1.set("0", "DeviceRegistry");
+			a1.set("1", QueryBuilder.contains("groups", QueryBuilder.eq("$", (String)objects[0])));
+			List<Device> d = (List<Device>)a1.run().accept(new DeviceRegistryStorageVisitor());
+			return d.toArray(new Device[d.size()]);
+		} catch (Exception e) {
+			throw new InternalPluginException(e);
+		}
 	}
 
 }
