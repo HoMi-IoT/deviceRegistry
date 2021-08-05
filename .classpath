@@ -46,22 +46,27 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/home/thunderpurtz/git/pluginAPI/target/plugin-api-0.0.1-SNAPSHOT.jar">
+	<classpathentry kind="lib" path="/home/nicolas/cmpe295/PluginAPI/target/api-0.0.1-SNAPSHOT.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/specification/target/specification-0.0.1-SNAPSHOT.jar">
+	<classpathentry kind="lib" path="/home/nicolas/cmpe295/Specification/target/specification-0.0.1-SNAPSHOT.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/deviceRegistrySpec">
+	<classpathentry kind="lib" path="/home/nicolas/git/deviceRegistrySpec/target/deviceRegistrySpec-0.0.1-SNAPSHOT.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/deviceRegistrySpec/target/deviceRegistrySpec-0.0.1-SNAPSHOT.jar">
+	<classpathentry kind="lib" path="/home/nicolas/cmpe295/nosql-spec/target/nosqlspec-0.0.1-SNAPSHOT.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="/home/nicolas/git/ActionRegistrySpec/target/ARSpec-0.0.1-SNAPSHOT.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
